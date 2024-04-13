@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chatter App</title>
+  <link rel="stylesheet" href="/Public/css/client.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
+</head>
+
+<body>
+  <div id="chat-container">
+    <div class="logo-container">
+      <i class="fa-brands fa-square-whatsapp"></i>
+    </div>
+    <div id="message-list">
+      <!-- list will contain messages -->
+    </div>
+    <form id="message-form">
+      <input type="text" id="message-input" placeholder="Type your message..." required />
+      <button type="submit">Send</button>
+    </form>
+  </div>
+
+  <div id="connected_Container">
+    <div class="connected_user">
+      <h2>Connected User : <span id="connectedUserCount">0</span></h2>
+    </div>
+    <div class="userList">
+      <!-- <div class="card_Connected">
+        <p><i class="fa-solid fa-circle"></i><span>Ankit</span></p>
+      </div>
+      <div class="card_Connected">
+        <p><i class="fa-solid fa-circle"></i><span>Ankit</span></p>
+      </div>
+      <div class="card_Connected">
+        <p><i class="fa-solid fa-circle"></i><span>Ankit</span></p>
+      </div>
+      <div class="card_Connected">
+        <p><i class="fa-solid fa-circle"></i><span>Ankit</span></p>
+      </div>
+      <div class="card_Connected">
+        <p><i class="fa-solid fa-circle"></i><span>Ankit</span></p>
+      </div>
+      <div class="card_Connected">
+        <p><i class="fa-solid fa-circle"></i><span>Ankit</span></p>
+      </div>
+      <div class="card_Connected">
+        <p><i class="fa-solid fa-circle"></i><span>Ankit</span></p>
+      </div>
+      <div class="card_Connected">
+        <p><i class="fa-solid fa-circle"></i><span>Ankit</span></p>
+      </div>
+      <div class="card_Connected">
+        <p><i class="fa-solid fa-circle"></i><span>Ankit</span></p>
+      </div>
+      <div class="card_Connected">
+        <p><i class="fa-solid fa-circle"></i><span>Ankit</span></p>
+      </div> -->
+
+    </div>
+  </div>
+
+
+  <script src="http://localhost:3000/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io.connect('http://localhost:3000');
+
+    const messageList = document.getElementById('message-list');
+    const messageForm = document.getElementById('message-form');
+    const messageInput = document.getElementById('message-input');
+    const logoContainer = document.querySelector('.logo-container');
+    const userList = document.querySelector('.userList');
+
+    const UserName = prompt('Enter Your Name ...')
+    socket.emit("Join", UserName)
+
+    const userNameElement = document.createElement('div');
+    userNameElement.className = 'ProfileName';
+    const heading = document.createElement('h2')
+    heading.innerText = UserName;
+    const typeIndicator = document.createElement('h4')
+    typeIndicator.innerText = '';
+    userNameElement.appendChild(heading)
+    userNameElement.appendChild(typeIndicator)
+    logoContainer.appendChild(userNameElement);
+
+
+    // craete noOfuser 
+    const noOfUser = document.createElement('div')
+    noOfUser.className = 'UserList'
+
+
+    messageForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const message = messageInput.value;
+      if (message) {
+        socket.emit('New_message', message);
+        socket.emit('typing', false); // Stop typing indicator
+        const messageElement = document.createElement('div');
+        messageElement.className = 'incoming-message';
+
+        // Display sender's name and timestamp above the message
+        const senderName = document.createElement('div');
+        senderName.className = 'NameTime';
+        const nameParagraph = document.createElement('p');
+        const timestamp = document.createElement('span');
+        timestamp.innerText = getCurrentTime();
+        nameParagraph.innerText = UserName;
+        nameParagraph.appendChild(timestamp);
+        senderName.appendChild(nameParagraph);
+        messageElement.appendChild(senderName);
+
+        // Display the message content
+        const paragraph = document.createElement('p');
+        paragraph.innerText = message;;
+        messageElement.appendChild(paragraph);
+
+        messageList.appendChild(messageElement);
+        messageInput.value = '';
+      }
+    });
+
+    messageInput.addEventListener('input', () => {
+      const isTyping = messageInput.value.length > 0;
+      socket.emit('typing', isTyping);
+    });
+
+
+
+    socket.on('broadcast_message', (userMessage) => {
+      console.log(userMessage);
+      const messageElement = document.createElement('div');
+      messageElement.className = 'outgoing-message';
+
+      // Display sender's name and timestamp above the message
+      const senderName = document.createElement('div');
+      senderName.className = 'NameTime';
+      const nameParagraph = document.createElement('p');
+      const timestamp = document.createElement('span');
+      timestamp.innerText = getCurrentTime();
+      nameParagraph.innerText = userMessage.UserName;
+      nameParagraph.appendChild(timestamp);
+      senderName.appendChild(nameParagraph);
+      messageElement.appendChild(senderName);
+
+      // Display the message content
+      const paragraph = document.createElement('p');
+      paragraph.innerText = userMessage.message;;
+      messageElement.appendChild(paragraph);
+      messageList.appendChild(messageElement);
+    })
+
+    socket.on('broadcast_user', (user) => {
+      const noOfUser = document.createElement('div')
+      noOfUser.className = 'card_Connected'
+      noOfUser.id = `${user._id}`
+      const para = document.createElement('p')
+      const iconElement = document.createElement('i')
+      iconElement.className = 'fa-solid fa-circle'
+      const span = document.createElement('span')
+      span.innerText = user.username;
+      para.appendChild(span)
+      para.appendChild(iconElement)
+      noOfUser.appendChild(para)
+      userList.appendChild(noOfUser)
+    })
+
+    socket.on('load_messages', (previousMessages) => {
+      previousMessages.forEach((message) => {
+        const messageElement = document.createElement('div');
+        messageElement.className = 'outgoing-message';
+
+        // Display sender's name and timestamp above the message
+        const senderName = document.createElement('div');
+        senderName.className = 'NameTime';
+        const nameParagraph = document.createElement('p');
+        const timestamp = document.createElement('span');
+        timestamp.innerText = getCurrentTime();
+        nameParagraph.innerText = message.username; // Use 'message.username' instead of 'userMessage.UserName'
+        nameParagraph.appendChild(timestamp);
+        senderName.appendChild(nameParagraph);
+        messageElement.appendChild(senderName);
+
+        // Display the message content
+        const paragraph = document.createElement('p');
+        paragraph.innerText = message.message; // Use 'message.message' instead of 'userMessage.message'
+        messageElement.appendChild(paragraph);
+        messageList.appendChild(messageElement);
+      });
+    });
+
+    socket.on('Users', (users) => {
+  // Clear the existing user list
+  userList.innerHTML = '';
+
+  users.forEach((user) => {
+    if (user.Status === 'Online') {
+      // Display only online users
+      const noOfUser = document.createElement('div');
+      noOfUser.className = 'card_Connected';
+      noOfUser.id = `${user._id}`;
+      const para = document.createElement('p');
+      const iconElement = document.createElement('i');
+      iconElement.className = 'fa-solid fa-circle';
+      const span = document.createElement('span');
+      span.innerText = user.name;
+      para.appendChild(span);
+      para.appendChild(iconElement);
+      noOfUser.appendChild(para);
+      userList.appendChild(noOfUser);
+    }
+  });
+});
+
+    socket.on('ShowOnline', (updatedUsers) => {
+
+  updatedUsers.forEach((updatedUser) => {
+    // Display only online users
+    const noOfUser = document.createElement('div');
+    noOfUser.className = 'card_Connected';
+    noOfUser.id = `${updatedUser._id}`;
+    const para = document.createElement('p');
+    const iconElement = document.createElement('i');
+    iconElement.className = 'fa-solid fa-circle';
+    const span = document.createElement('span');
+    span.innerText = updatedUser.name;
+    para.appendChild(span);
+    para.appendChild(iconElement);
+    noOfUser.appendChild(para);
+    userList.appendChild(noOfUser);
+  });
+});
+      
+
+    socket.on('Connected_User_Count', (count) => {
+      document.getElementById('connectedUserCount').innerText = count;
+    });
+
+    socket.on('typing', (data) => {
+      const { UserName, isTyping } = data;
+      typeIndicator.innerText = isTyping ? `${UserName} is typing...` : '';
+    });
+
+    // Function to get the current time in HH:MM format
+    function getCurrentTime() {
+      const now = new Date();
+      let hours = now.getHours();
+      const minutes = now.getMinutes().toString().padStart(2, '0');
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      // Convert to 12-hour format
+      hours = hours % 12 || 12;
+      return `${hours}:${minutes} ${ampm}`;
+    }
+  </script>
+</body>
+
+</html>
